@@ -40,11 +40,22 @@
         android:id="@+id/fab_search"
         android:layout_width="59dp"
         android:layout_height="wrap_content"
-        android:layout_alignParentRight="false"
+
         android:layout_alignParentBottom="true"
-        android:layout_marginLeft="280dp"
+        android:layout_alignParentLeft="true"
+        android:layout_marginLeft="250dp"
         android:layout_marginBottom="16dp"
         android:clickable="true"
         android:src="@drawable/ic_search_black_24dp"
         app:elevation="4dp" />
+    <LinearLayout
+        android:layout_width="100dp"
+        android:layout_height="100dp">
+    <ImageView
+        android:id="@+id/imgaview"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:layout_above="@+id/fab_camera"
+        />
+    </LinearLayout>
 </RelativeLayout>

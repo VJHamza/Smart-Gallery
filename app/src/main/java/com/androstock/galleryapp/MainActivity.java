@@ -33,6 +33,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.ml.vision.FirebaseVision;
+import com.google.firebase.ml.vision.common.FirebaseVisionImage;
+import com.google.firebase.ml.vision.label.FirebaseVisionLabel;
+import com.google.firebase.ml.vision.label.FirebaseVisionLabelDetector;
+import com.google.firebase.ml.vision.label.FirebaseVisionLabelDetectorOptions;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +50,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+
+import static android.os.Environment.getExternalStoragePublicDirectory;
 
 public class MainActivity extends AppCompatActivity {
     FloatingActionButton floatingActionButton;
@@ -78,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         if(!Function.hasPermissions(this, PERMISSIONS)){
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_KEY);
         }
+        mImageView=(ImageView)findViewById(R.id.imgaview);
         floatingActionButton=(FloatingActionButton)findViewById(R.id.fab_camera);
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -96,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
                 // Continue only if the File was successfully created
                 if (photoFile != null) {
                     Uri photoURI = FileProvider.getUriForFile(MainActivity.this,
-                            "com.example.android.fileprovider",
+                            "com.example.android.fileprovider2",
                             photoFile);
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
 
@@ -106,12 +117,14 @@ public class MainActivity extends AppCompatActivity {
         }
         });
 
+
+
     }
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = timeStamp+"_";
-        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        String imageFileName = timeStamp;
+        File storageDir = getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
         File image = File.createTempFile(
                 imageFileName,  /* prefix */
                 ".jpg",         /* suffix */
@@ -125,6 +138,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == CAMERA_REQUEST && resultCode == RESULT_OK) {
+            if(mImageView==null){
+                Toast.makeText(MainActivity.this, "EMpty", Toast.LENGTH_LONG).show();
+            }
             int targetW = mImageView.getWidth();
             int targetH = mImageView.getHeight();
 
@@ -144,45 +160,59 @@ public class MainActivity extends AppCompatActivity {
             bmOptions.inPurgeable = true;
 
             Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
-//            GetLabels getLabels=new GetLabels();
-//            getLabels.execute(bitmap);
+            GetLabels getLabels=new GetLabels();
+            getLabels.execute(bitmap);
 
-            mImageView.setImageBitmap(bitmap);
+            //Toast.makeText(MainActivity.this,"Saved",Toast.LENGTH_LONG).show();
+
+            LoadAlbum loadAlbum=new LoadAlbum();
+            loadAlbum.execute();
+            //mImageView.setImageBitmap(bitmap);
         }
     }
+    private void galleryAddPic() {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        File f = new File(mCurrentPhotoPath);
+        Uri contentUri = Uri.fromFile(f);
+        mediaScanIntent.setData(contentUri);
+        this.sendBroadcast(mediaScanIntent);
+    }
+
     //GEt_LABELS_ASYNC_TASK
-//    private class GetLabels extends AsyncTask<Bitmap,Void , Void > {
-//
-//        @Override
-//        protected Void doInBackground(Bitmap... bitmaps) {
-//
-//            FirebaseVisionImage image=imageFromBitmap(bitmaps[0]);
-//            labelImages(image);
-//            return null;
-//        }
-//
-//        @Override
-//        protected void onPreExecute() {
-//            super.onPreExecute();
-//            // Showing progress dialog
-//            pDialog = new ProgressDialog(MainActivity.this);
-//            pDialog.setMessage("Please wait...");
-//            pDialog.setCancelable(false);
-//            pDialog.show();
-//
-//        }
-//
-//        @Override
-//        protected void onPostExecute(Void result) {
-//            super.onPostExecute(result);
-//            // Dismiss the progress dialog
-//            if (pDialog.isShowing())
-//                pDialog.dismiss();
-//
-//        }
-//
-//    }
-//
+    private class GetLabels extends AsyncTask<Bitmap,Void , Void > {
+
+        @Override
+        protected Void doInBackground(Bitmap... bitmaps) {
+            //VisionImage visionImage=new VisionImage();
+            //visionImage.imageFromBitmap(bitmaps[0]);
+            FirebaseVisionImage image=imageFromBitmap(bitmaps[0]);
+            labelImages(image);
+            galleryAddPic();
+            return null;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            // Showing progress dialog
+            pDialog = new ProgressDialog(MainActivity.this);
+            pDialog.setMessage("Please wait...");
+            pDialog.setCancelable(false);
+            pDialog.show();
+
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            super.onPostExecute(result);
+            // Dismiss the progress dialog
+            if (pDialog.isShowing())
+                pDialog.dismiss();
+            //Toast.makeText(MainActivity.this, "POST EXECUTE", Toast.LENGTH_SHORT).show();
+        }
+
+    }
+
 
 
 
@@ -277,6 +307,66 @@ public class MainActivity extends AppCompatActivity {
             loadAlbumTask.execute();
         }
 
+    }
+
+    public FirebaseVisionImage imageFromBitmap(Bitmap bitmap) {
+        // [START image_from_bitmap]
+        FirebaseVisionImage image = FirebaseVisionImage.fromBitmap(bitmap);
+        return image;
+        // [END image_from_bitmap]
+    }
+    public void labelImages(FirebaseVisionImage image) {
+        FirebaseVisionLabelDetectorOptions options =
+                new FirebaseVisionLabelDetectorOptions.Builder()
+                        .setConfidenceThreshold(0.8f)
+                        .build();
+        // [END set_detector_options]
+
+        // [START get_detector_default]
+        FirebaseVisionLabelDetector detector = FirebaseVision.getInstance()
+                .getVisionLabelDetector();
+        // [END get_detector_default]
+
+        /*
+        // [START get_detector_options]
+        // Or, to set the minimum confidence required:
+        FirebaseVisionLabelDetector detector = FirebaseVision.getInstance()
+                .getVisionLabelDetector(options);
+        // [END get_detector_options]
+        */
+
+        // [START run_detector]
+        final List<String> labels1 = new ArrayList<>();
+        Task<List<FirebaseVisionLabel>> result =
+                detector.detectInImage(image)
+                        .addOnSuccessListener(
+                                new OnSuccessListener<List<FirebaseVisionLabel>>() {
+                                    @Override
+                                    public void onSuccess(List<FirebaseVisionLabel> labels) {
+                                        // Task completed successfully
+                                        // [START_EXCLUDE]
+                                        // [START get_labels]
+                                        for (FirebaseVisionLabel label : labels) {
+                                            String lab  = label.getLabel();
+                                            String entityId = label.getEntityId();
+                                            float confidence = label.getConfidence();
+                                            labels1.add(lab);
+                                            Toast.makeText(MainActivity.this, "Cloud result: "+ lab, Toast.LENGTH_SHORT).show();
+                                        }
+                                        // [END get_labels]
+                                        // [END_EXCLUDE]
+                                    }
+                                })
+                        .addOnFailureListener(
+                                new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception e) {
+                                        // Task failed with an exception
+                                        // ...
+                                        Log.d("ErrorLabel: ",e.getMessage());
+                                    }
+                                });
+        // [END run_detector]
     }
 }
 

@@ -3,6 +3,7 @@ apply plugin: 'com.google.gms.google-services'
 
 android {
 
+
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.androstock.galleryapp"
@@ -35,5 +36,13 @@ dependencies {
     implementation 'com.android.support:design:26.1.0'
     implementation 'com.google.firebase:firebase-ml-vision:18.0.2'
     implementation 'com.google.firebase:firebase-ml-vision-image-label-model:17.0.2'
+    // Room components
+    implementation "android.arch.persistence.room:runtime:$rootProject.roomVersion"
+    annotationProcessor "android.arch.persistence.room:compiler:$rootProject.roomVersion"
+    androidTestImplementation "android.arch.persistence.room:testing:$rootProject.roomVersion"
+
+// Lifecycle components
+    implementation "android.arch.lifecycle:extensions:$rootProject.archLifecycleVersion"
+    annotationProcessor "android.arch.lifecycle:compiler:$rootProject.archLifecycleVersion"
 
 }

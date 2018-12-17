@@ -63,8 +63,6 @@ public class AlbumActivity extends AppCompatActivity {
 
         loadAlbumTask = new LoadAlbumImages();
         loadAlbumTask.execute();
-
-
     }
 
 
