@@ -58,68 +58,68 @@ public class MainActivity extends AppCompatActivity {
     static final int REQUEST_PERMISSION_KEY = 1;
     LoadAlbum loadAlbumTask;
     GridView galleryGridView;
-    public int CAMERA_REQUEST=1000;
+    public int CAMERA_REQUEST = 1000;
     String mCurrentPhotoPath;
     ImageView mImageView;
     private ProgressDialog pDialog;
-
+    public String labelResult;
 
     ArrayList<HashMap<String, String>> albumList = new ArrayList<HashMap<String, String>>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        labelResult = "Label";
+        galleryGridView = (GridView) findViewById(R.id.galleryGridView);
 
-         galleryGridView = (GridView) findViewById(R.id.galleryGridView);
-
-        int iDisplayWidth = getResources().getDisplayMetrics().widthPixels ;
+        int iDisplayWidth = getResources().getDisplayMetrics().widthPixels;
         Resources resources = getApplicationContext().getResources();
         DisplayMetrics metrics = resources.getDisplayMetrics();
         float dp = iDisplayWidth / (metrics.densityDpi / 160f);
 
-        if(dp < 360)
-        {
+        if (dp < 360) {
             dp = (dp - 17) / 2;
             float px = Function.convertDpToPixel(dp, getApplicationContext());
             galleryGridView.setColumnWidth(Math.round(px));
         }
 
         String[] PERMISSIONS = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-        if(!Function.hasPermissions(this, PERMISSIONS)){
+        if (!Function.hasPermissions(this, PERMISSIONS)) {
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_KEY);
         }
-        mImageView=(ImageView)findViewById(R.id.imgaview);
-        floatingActionButton=(FloatingActionButton)findViewById(R.id.fab_camera);
+        mImageView = (ImageView) findViewById(R.id.imgaview);
+        floatingActionButton = (FloatingActionButton) findViewById(R.id.fab_camera);
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            // Ensure that there's a camera activity to handle the intent
-            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                // Create the File where the photo should go
-                File photoFile = null;
-                try {
-                    photoFile = createImageFile();
-                } catch (IOException ex) {
-                    // Error occurred while creating the File
-                    Toast.makeText(MainActivity.this,"Error:"+ex,Toast.LENGTH_LONG).show();
-                }
-                // Continue only if the File was successfully created
-                if (photoFile != null) {
-                    Uri photoURI = FileProvider.getUriForFile(MainActivity.this,
-                            "com.example.android.fileprovider2",
-                            photoFile);
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                // Ensure that there's a camera activity to handle the intent
+                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                    // Create the File where the photo should go
+                    File photoFile = null;
+                    try {
+                        photoFile = createImageFile();
+                    } catch (IOException ex) {
+                        // Error occurred while creating the File
+                        Toast.makeText(MainActivity.this, "Error:" + ex, Toast.LENGTH_LONG).show();
+                    }
+                    // Continue only if the File was successfully created
+                    if (photoFile != null) {
+                        Uri photoURI = FileProvider.getUriForFile(MainActivity.this,
+                                "com.example.android.fileprovider2",
+                                photoFile);
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
 
-                    startActivityForResult(takePictureIntent, CAMERA_REQUEST);
+                        startActivityForResult(takePictureIntent, CAMERA_REQUEST);
+                    }
                 }
             }
-        }
         });
 
 
-
     }
+
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -135,10 +135,11 @@ public class MainActivity extends AppCompatActivity {
         mCurrentPhotoPath = image.getAbsolutePath();
         return image;
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == CAMERA_REQUEST && resultCode == RESULT_OK) {
-            if(mImageView==null){
+            if (mImageView == null) {
                 Toast.makeText(MainActivity.this, "EMpty", Toast.LENGTH_LONG).show();
             }
             int targetW = mImageView.getWidth();
@@ -152,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
             int photoH = bmOptions.outHeight;
 
             // Determine how much to scale down the image
-            int scaleFactor = Math.min(photoW/targetW, photoH/targetH);
+            int scaleFactor = Math.min(photoW / targetW, photoH / targetH);
 
             // Decode the image file into a Bitmap sized to fill the View
             bmOptions.inJustDecodeBounds = false;
@@ -160,16 +161,17 @@ public class MainActivity extends AppCompatActivity {
             bmOptions.inPurgeable = true;
 
             Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
-            GetLabels getLabels=new GetLabels();
+            GetLabels getLabels = new GetLabels();
             getLabels.execute(bitmap);
 
             //Toast.makeText(MainActivity.this,"Saved",Toast.LENGTH_LONG).show();
 
-            LoadAlbum loadAlbum=new LoadAlbum();
+            LoadAlbum loadAlbum = new LoadAlbum();
             loadAlbum.execute();
             //mImageView.setImageBitmap(bitmap);
         }
     }
+
     private void galleryAddPic() {
         Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
         File f = new File(mCurrentPhotoPath);
@@ -179,13 +181,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //GEt_LABELS_ASYNC_TASK
-    private class GetLabels extends AsyncTask<Bitmap,Void , Void > {
+    private class GetLabels extends AsyncTask<Bitmap, Void, Void> {
 
         @Override
         protected Void doInBackground(Bitmap... bitmaps) {
             //VisionImage visionImage=new VisionImage();
             //visionImage.imageFromBitmap(bitmaps[0]);
-            FirebaseVisionImage image=imageFromBitmap(bitmaps[0]);
+            FirebaseVisionImage image = imageFromBitmap(bitmaps[0]);
             labelImages(image);
             galleryAddPic();
             return null;
@@ -214,8 +216,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-
     //LOAD_ALBUM
     class LoadAlbum extends AsyncTask<String, Void, String> {
         @Override
@@ -235,13 +235,13 @@ public class MainActivity extends AppCompatActivity {
             Uri uriInternal = android.provider.MediaStore.Images.Media.INTERNAL_CONTENT_URI;
 
 
-            String[] projection = { MediaStore.MediaColumns.DATA,
-                    MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.MediaColumns.DATE_MODIFIED };
+            String[] projection = {MediaStore.MediaColumns.DATA,
+                    MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.MediaColumns.DATE_MODIFIED};
             Cursor cursorExternal = getContentResolver().query(uriExternal, projection, "_data IS NOT NULL) GROUP BY (bucket_display_name",
                     null, null);
             Cursor cursorInternal = getContentResolver().query(uriInternal, projection, "_data IS NOT NULL) GROUP BY (bucket_display_name",
                     null, null);
-            Cursor cursor = new MergeCursor(new Cursor[]{cursorExternal,cursorInternal});
+            Cursor cursor = new MergeCursor(new Cursor[]{cursorExternal, cursorInternal});
 
             while (cursor.moveToNext()) {
 
@@ -274,19 +274,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode)
-        {
+        switch (requestCode) {
             case REQUEST_PERMISSION_KEY: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     loadAlbumTask = new LoadAlbum();
                     loadAlbumTask.execute();
-                } else
-                {
+                } else {
                     Toast.makeText(MainActivity.this, "You must accept permissions.", Toast.LENGTH_LONG).show();
                 }
             }
@@ -300,9 +296,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         String[] PERMISSIONS = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-        if(!Function.hasPermissions(this, PERMISSIONS)){
+        if (!Function.hasPermissions(this, PERMISSIONS)) {
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_KEY);
-        }else{
+        } else {
             loadAlbumTask = new LoadAlbum();
             loadAlbumTask.execute();
         }
@@ -315,6 +311,7 @@ public class MainActivity extends AppCompatActivity {
         return image;
         // [END image_from_bitmap]
     }
+
     public void labelImages(FirebaseVisionImage image) {
         FirebaseVisionLabelDetectorOptions options =
                 new FirebaseVisionLabelDetectorOptions.Builder()
@@ -336,6 +333,7 @@ public class MainActivity extends AppCompatActivity {
         */
 
         // [START run_detector]
+
         final List<String> labels1 = new ArrayList<>();
         Task<List<FirebaseVisionLabel>> result =
                 detector.detectInImage(image)
@@ -347,12 +345,13 @@ public class MainActivity extends AppCompatActivity {
                                         // [START_EXCLUDE]
                                         // [START get_labels]
                                         for (FirebaseVisionLabel label : labels) {
-                                            String lab  = label.getLabel();
+                                            String lab = label.getLabel();
                                             String entityId = label.getEntityId();
                                             float confidence = label.getConfidence();
                                             labels1.add(lab);
-                                            Toast.makeText(MainActivity.this, "Cloud result: "+ lab, Toast.LENGTH_SHORT).show();
+                                            labelResult = labelResult + " " + lab;
                                         }
+                                        Toast.makeText(MainActivity.this, "" +labelResult , Toast.LENGTH_SHORT).show();
                                         // [END get_labels]
                                         // [END_EXCLUDE]
                                     }
@@ -363,7 +362,7 @@ public class MainActivity extends AppCompatActivity {
                                     public void onFailure(@NonNull Exception e) {
                                         // Task failed with an exception
                                         // ...
-                                        Log.d("ErrorLabel: ",e.getMessage());
+                                        Log.d("ErrorLabel: ", e.getMessage());
                                     }
                                 });
         // [END run_detector]
@@ -371,21 +370,23 @@ public class MainActivity extends AppCompatActivity {
 }
 
 
-
-
 class AlbumAdapter extends BaseAdapter {
     private Activity activity;
-    private ArrayList<HashMap< String, String >> data;
-    public AlbumAdapter(Activity a, ArrayList < HashMap < String, String >> d) {
+    private ArrayList<HashMap<String, String>> data;
+
+    public AlbumAdapter(Activity a, ArrayList<HashMap<String, String>> d) {
         activity = a;
         data = d;
     }
+
     public int getCount() {
         return data.size();
     }
+
     public Object getItem(int position) {
         return position;
     }
+
     public long getItemId(int position) {
         return position;
     }
@@ -409,7 +410,7 @@ class AlbumAdapter extends BaseAdapter {
         holder.gallery_count.setId(position);
         holder.gallery_title.setId(position);
 
-        HashMap < String, String > song = new HashMap < String, String > ();
+        HashMap<String, String> song = new HashMap<String, String>();
         song = data.get(position);
         try {
             holder.gallery_title.setText(song.get(Function.KEY_ALBUM));
@@ -420,7 +421,8 @@ class AlbumAdapter extends BaseAdapter {
                     .into(holder.galleryImage);
 
 
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
         return convertView;
     }
 
