@@ -2,6 +2,7 @@ package com.androstock.galleryapp;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DialogFragment;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -32,6 +33,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.androstock.galleryapp.Dialogue.SearchDialog;
 import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -54,7 +56,7 @@ import java.util.List;
 import static android.os.Environment.getExternalStoragePublicDirectory;
 
 public class MainActivity extends AppCompatActivity {
-    FloatingActionButton floatingActionButton;
+    FloatingActionButton floatingActionButton, floatingActionButton2;
     static final int REQUEST_PERMISSION_KEY = 1;
     LoadAlbum loadAlbumTask;
     GridView galleryGridView;
@@ -63,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
     ImageView mImageView;
     private ProgressDialog pDialog;
     public String labelResult;
+    public String imagePath;
+    Uri photoURI;
 
     ArrayList<HashMap<String, String>> albumList = new ArrayList<HashMap<String, String>>();
 
@@ -70,6 +74,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+//        ImageDao imageDao=AppRoomDatabase.getDatabase(MainActivity.this).imageDao();
+//        imageDao.deleteAll();
+
+
         labelResult = "Label";
         galleryGridView = (GridView) findViewById(R.id.galleryGridView);
 
@@ -90,6 +100,16 @@ public class MainActivity extends AppCompatActivity {
         }
         mImageView = (ImageView) findViewById(R.id.imgaview);
         floatingActionButton = (FloatingActionButton) findViewById(R.id.fab_camera);
+        floatingActionButton2 = (FloatingActionButton) findViewById(R.id.fab_search);
+        floatingActionButton2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SearchDialog searchDialog = new SearchDialog(MainActivity.this);
+                searchDialog.SearchImage(R.layout.dialog_layout);
+
+            }
+        });
+
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -106,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     // Continue only if the File was successfully created
                     if (photoFile != null) {
-                        Uri photoURI = FileProvider.getUriForFile(MainActivity.this,
+                        photoURI = FileProvider.getUriForFile(MainActivity.this,
                                 "com.example.android.fileprovider2",
                                 photoFile);
                         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
@@ -124,12 +144,12 @@ public class MainActivity extends AppCompatActivity {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = timeStamp;
-        File storageDir = getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        File image = File.createTempFile(
-                imageFileName,  /* prefix */
-                ".jpg",         /* suffix */
-                storageDir      /* directory */
-        );
+        File image =new File( getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath()+"/"+imageFileName+".jpg");
+//        File image = File.createTempFile(
+//                imageFileName,  /* prefix */
+//                ".jpg",         /* suffix */
+//                storageDir      /* directory */
+//        );
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = image.getAbsolutePath();
@@ -163,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
             Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
             GetLabels getLabels = new GetLabels();
             getLabels.execute(bitmap);
+            //GalleryPreview galleryPreview=new GalleryPreview();
 
             //Toast.makeText(MainActivity.this,"Saved",Toast.LENGTH_LONG).show();
 
@@ -315,7 +336,7 @@ public class MainActivity extends AppCompatActivity {
     public void labelImages(FirebaseVisionImage image) {
         FirebaseVisionLabelDetectorOptions options =
                 new FirebaseVisionLabelDetectorOptions.Builder()
-                        .setConfidenceThreshold(0.8f)
+                        .setConfidenceThreshold(1.0f)
                         .build();
         // [END set_detector_options]
 
@@ -351,7 +372,14 @@ public class MainActivity extends AppCompatActivity {
                                             labels1.add(lab);
                                             labelResult = labelResult + " " + lab;
                                         }
-                                        Toast.makeText(MainActivity.this, "" +labelResult , Toast.LENGTH_SHORT).show();
+                                       imagePath = mCurrentPhotoPath;
+
+
+                                        Image image = new Image(labelResult, imagePath);
+                                        AppRoomDatabase ard = AppRoomDatabase.getDatabase(MainActivity.this);
+                                        ard.imageDao().insert(image);
+
+                                        Toast.makeText(MainActivity.this, " " + labelResult, Toast.LENGTH_LONG).show();
                                         // [END get_labels]
                                         // [END_EXCLUDE]
                                     }

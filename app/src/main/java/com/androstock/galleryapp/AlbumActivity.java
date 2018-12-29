@@ -35,7 +35,7 @@ public class AlbumActivity extends AppCompatActivity {
     ArrayList<HashMap<String, String>> imageList = new ArrayList<HashMap<String, String>>();
     String album_name = "";
     LoadAlbumImages loadAlbumTask;
-
+    ArrayList<Image> resultantImages = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,16 +45,16 @@ public class AlbumActivity extends AppCompatActivity {
         Intent intent = getIntent();
         album_name = intent.getStringExtra("name");
         setTitle(album_name);
-
+        //searched images list
+        resultantImages = (ArrayList<Image>) intent.getExtras().getSerializable("Images");
 
         galleryGridView = (GridView) findViewById(R.id.galleryGridView);
-        int iDisplayWidth = getResources().getDisplayMetrics().widthPixels ;
+        int iDisplayWidth = getResources().getDisplayMetrics().widthPixels;
         Resources resources = getApplicationContext().getResources();
         DisplayMetrics metrics = resources.getDisplayMetrics();
         float dp = iDisplayWidth / (metrics.densityDpi / 160f);
 
-        if(dp < 360)
-        {
+        if (dp < 360) {
             dp = (dp - 17) / 2;
             float px = Function.convertDpToPixel(dp, getApplicationContext());
             galleryGridView.setColumnWidth(Math.round(px));
@@ -81,24 +81,34 @@ public class AlbumActivity extends AppCompatActivity {
             String timestamp = null;
             Uri uriExternal = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
             Uri uriInternal = android.provider.MediaStore.Images.Media.INTERNAL_CONTENT_URI;
+            if (resultantImages == null) {
+                String[] projection = {MediaStore.MediaColumns.DATA,
+                        MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.MediaColumns.DATE_MODIFIED};
 
-            String[] projection = { MediaStore.MediaColumns.DATA,
-                    MediaStore.Images.Media.BUCKET_DISPLAY_NAME, MediaStore.MediaColumns.DATE_MODIFIED };
+                Cursor cursorExternal = getContentResolver().query(uriExternal, projection, "bucket_display_name = \"" + album_name + "\"", null, null);
+                Cursor cursorInternal = getContentResolver().query(uriInternal, projection, "bucket_display_name = \"" + album_name + "\"", null, null);
+                Cursor cursor = new MergeCursor(new Cursor[]{cursorExternal, cursorInternal});
+                while (cursor.moveToNext()) {
 
-            Cursor cursorExternal = getContentResolver().query(uriExternal, projection, "bucket_display_name = \""+album_name+"\"", null, null);
-            Cursor cursorInternal = getContentResolver().query(uriInternal, projection, "bucket_display_name = \""+album_name+"\"", null, null);
-            Cursor cursor = new MergeCursor(new Cursor[]{cursorExternal,cursorInternal});
-            while (cursor.moveToNext()) {
+                    path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA));
+                    album = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME));
+                    timestamp = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED));
 
-                path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA));
-                album = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME));
-                timestamp = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED));
+                    imageList.add(Function.mappingInbox(album, path, timestamp, Function.converToTime(timestamp), null));
+                }
+                cursor.close();
+                Collections.sort(imageList, new MapComparator(Function.KEY_TIMESTAMP, "dsc")); // Arranging photo album by timestamp decending
+                return xml;
 
-                imageList.add(Function.mappingInbox(album, path, timestamp, Function.converToTime(timestamp), null));
+            } else {
+                for (Image image : resultantImages) {
+                    path = image.getUri();
+                    imageList.add(Function.mappingInbox("", path, "", "", null));
+                }
+                return xml;
             }
-            cursor.close();
-            Collections.sort(imageList, new MapComparator(Function.KEY_TIMESTAMP, "dsc")); // Arranging photo album by timestamp decending
-            return xml;
+
+
         }
 
         @Override
@@ -111,6 +121,7 @@ public class AlbumActivity extends AppCompatActivity {
                                         final int position, long id) {
                     Intent intent = new Intent(AlbumActivity.this, GalleryPreview.class);
                     intent.putExtra("path", imageList.get(+position).get(Function.KEY_PATH));
+//                    intent.putExtra("position", position);
                     startActivity(intent);
                 }
             });
@@ -119,20 +130,23 @@ public class AlbumActivity extends AppCompatActivity {
 }
 
 
-
 class SingleAlbumAdapter extends BaseAdapter {
     private Activity activity;
-    private ArrayList<HashMap< String, String >> data;
-    public SingleAlbumAdapter(Activity a, ArrayList < HashMap < String, String >> d) {
+    private ArrayList<HashMap<String, String>> data;
+
+    public SingleAlbumAdapter(Activity a, ArrayList<HashMap<String, String>> d) {
         activity = a;
         data = d;
     }
+
     public int getCount() {
         return data.size();
     }
+
     public Object getItem(int position) {
         return position;
     }
+
     public long getItemId(int position) {
         return position;
     }
@@ -152,7 +166,7 @@ class SingleAlbumAdapter extends BaseAdapter {
         }
         holder.galleryImage.setId(position);
 
-        HashMap < String, String > song = new HashMap < String, String > ();
+        HashMap<String, String> song = new HashMap<String, String>();
         song = data.get(position);
         try {
 
@@ -161,7 +175,8 @@ class SingleAlbumAdapter extends BaseAdapter {
                     .into(holder.galleryImage);
 
 
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
         return convertView;
     }
 }
